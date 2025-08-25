@@ -9,23 +9,23 @@ const morgan = require('morgan');
 const path = require('path');
 require('dotenv').config();
 
-// Importar configuración de base de datos
+// Configuración de base de datos
 const { testConnection } = require('./config/database');
 const { syncAllModels, createInitialData } = require('./models');
 
-// Importar rutas
+// Rutas
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const reportRoutes = require('./routes/reports');
 const categoryRoutes = require('./routes/categories');
 const adminRoutes = require('./routes/admin');
 
-// Importar middleware
+// Middleware
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 
-// Configuración de seguridad
+// Seguridad y limpieza
 app.use(helmet());
 app.use(xss());
 app.use(hpp());
@@ -34,9 +34,7 @@ app.use(hpp());
 const limiter = rateLimit({
   windowMs: (process.env.RATE_LIMIT_WINDOW || 15) * 60 * 1000,
   max: process.env.RATE_LIMIT_MAX || 100,
-  message: {
-    error: 'Demasiadas solicitudes desde esta IP, intenta de nuevo más tarde.'
-  }
+  message: { error: 'Demasiadas solicitudes desde esta IP, intenta de nuevo más tarde.' }
 });
 app.use('/api/', limiter);
 
@@ -53,24 +51,22 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Servir archivos estáticos con encabezados para cross-origin
+// Archivos estáticos
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
-  setHeaders: (res) => {
-    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-  }
+  setHeaders: (res) => res.setHeader("Cross-Origin-Resource-Policy", "cross-origin")
 }));
 
-// Rutas
+// Rutas API
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/admin', adminRoutes);
 
-// Ruta de prueba
+// Health check
 app.get('/api/health', (req, res) => {
   res.json({ 
-    status: 'OK', 
+    status: 'OK',
     message: 'API de Vecinity funcionando correctamente',
     timestamp: new Date().toISOString(),
     database: 'MySQL',
@@ -80,16 +76,11 @@ app.get('/api/health', (req, res) => {
 
 // Manejo de errores
 app.use(errorHandler.errorHandler);
-
-// Ruta para manejar rutas no encontradas
 app.use('*', (req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Ruta no encontrada'
-  });
+  res.status(404).json({ success: false, message: 'Ruta no encontrada' });
 });
 
-// Función para inicializar la base de datos
+// Inicializar base de datos
 const initializeDatabase = async () => {
   try {
     const connectionOk = await testConnection();
@@ -107,10 +98,11 @@ const initializeDatabase = async () => {
   }
 };
 
-// Iniciar servidor
+// Puerto y URL pública
 const PORT = process.env.PORT || 5000;
-const PUBLIC_URL = process.env.RAILWAY_STATIC_URL || `http://localhost:${PORT}`;
+const PUBLIC_URL = process.env.PUBLIC_URL || `http://localhost:${PORT}`;
 
+// Iniciar servidor
 const startServer = async () => {
   try {
     const dbInitialized = await initializeDatabase();
@@ -132,26 +124,18 @@ const startServer = async () => {
 
 startServer();
 
-// Manejo de errores no capturados
+// Errores no capturados
 process.on('unhandledRejection', (err) => {
   console.error('Error no manejado:', err.message);
   console.error('Stack:', err.stack);
   process.exit(1);
 });
-
 process.on('uncaughtException', (err) => {
   console.error('Excepción no capturada:', err.message);
   console.error('Stack:', err.stack);
   process.exit(1);
 });
 
-// Manejo de señales de terminación
-process.on('SIGTERM', () => {
-  console.log('Recibida señal SIGTERM. Cerrando servidor...');
-  process.exit(0);
-});
-
-process.on('SIGINT', () => {
-  console.log('Recibida señal SIGINT. Cerrando servidor...');
-  process.exit(0);
-});
+// Señales de terminación
+process.on('SIGTERM', () => { console.log('SIGTERM recibido. Cerrando...'); process.exit(0); });
+process.on('SIGINT', () => { console.log('SIGINT recibido. Cerrando...'); process.exit(0); });
