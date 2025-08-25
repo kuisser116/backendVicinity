@@ -10,7 +10,7 @@ const path = require('path');
 require('dotenv').config();
 
 // Importar configuración de base de datos
-const { testConnection, syncDatabase } = require('./config/database');
+const { testConnection } = require('./config/database');
 const { syncAllModels, createInitialData } = require('./models');
 
 // Importar rutas
@@ -22,7 +22,6 @@ const adminRoutes = require('./routes/admin');
 
 // Importar middleware
 const errorHandler = require('./middleware/errorHandler');
-const authMiddleware = require('./middleware/auth');
 
 const app = express();
 
@@ -45,7 +44,10 @@ app.use('/api/', limiter);
 app.use(compression());
 app.use(morgan(process.env.LOG_LEVEL || 'combined'));
 app.use(cors({
-  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['http://localhost:3000', 'http://localhost:5173'],
+  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : [
+    'http://localhost:3000',
+    'http://localhost:5173'
+  ],
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -53,7 +55,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Servir archivos estáticos con encabezados para cross-origin
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
-  setHeaders: (res, filePath) => {
+  setHeaders: (res) => {
     res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
   }
 }));
@@ -107,6 +109,8 @@ const initializeDatabase = async () => {
 
 // Iniciar servidor
 const PORT = process.env.PORT || 5000;
+const PUBLIC_URL = process.env.RAILWAY_STATIC_URL || `http://localhost:${PORT}`;
+
 const startServer = async () => {
   try {
     const dbInitialized = await initializeDatabase();
@@ -117,8 +121,8 @@ const startServer = async () => {
       console.log(`Puerto: ${PORT}`);
       console.log(`Ambiente: ${process.env.NODE_ENV || 'development'}`);
       console.log(`Base de datos: MySQL`);
-      console.log(`URL: http://localhost:${PORT}`);
-      console.log(`Health check: http://localhost:${PORT}/api/health`);
+      console.log(`URL pública: ${PUBLIC_URL}`);
+      console.log(`Health check: ${PUBLIC_URL}/api/health`);
     });
   } catch (error) {
     console.error('Error iniciando el servidor:', error.message);
@@ -129,7 +133,7 @@ const startServer = async () => {
 startServer();
 
 // Manejo de errores no capturados
-process.on('unhandledRejection', (err, promise) => {
+process.on('unhandledRejection', (err) => {
   console.error('Error no manejado:', err.message);
   console.error('Stack:', err.stack);
   process.exit(1);
